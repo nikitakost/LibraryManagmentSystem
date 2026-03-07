@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as authService from '../services/auth_service';
-import { registerSchema, loginSchema } from '../schemas/validation';
+import { registerSchema, loginSchema, refreshSchema } from '../schemas/validation';
+
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   const validation = registerSchema.safeParse(req.body);
@@ -31,5 +32,20 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     res.json(result);
   } catch (error: any) {
     res.status(401).json({ error: error.message }); 
+  }
+};
+
+export const refreshToken = async (req: Request, res: Response): Promise<void> => {
+  const validation = refreshSchema.safeParse(req.body);
+  if (!validation.success) {
+    res.status(400).json({ errors: validation.error.flatten().fieldErrors });
+    return;
+  }
+
+  try {
+    const tokens = await authService.refreshTokens(validation.data.refreshToken);
+    res.json(tokens);
+  } catch (error: any) {
+    res.status(401).json({ error: error.message });
   }
 };
