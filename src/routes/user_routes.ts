@@ -1,10 +1,15 @@
 import { Router } from 'express';
 import * as userController from '../controllers/user_controller';
+import { isAuth } from '../middleware/auth.middleware';
+import { isAdmin } from '../middleware/role.middleware';
 
 const router = Router();
 
-router.get('/', userController.getUsers);
-router.get('/:id', userController.getUserById);
-router.post('/', userController.createUser);
+// Public
+router.get('/me', isAuth, userController.getMe);
+
+// Admin only
+router.get('/', isAuth, isAdmin, userController.getUsers);
+router.get('/:id', isAuth, isAdmin, userController.getUserById);
 
 export default router;

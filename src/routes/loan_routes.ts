@@ -1,10 +1,12 @@
-import { Router} from 'express';
+import { Router } from 'express';
 import * as loanController from '../controllers/loan_controller';
+import { isAuth } from '../middleware/auth.middleware';
 
 const router = Router();
 
-router.get('/', loanController.getLoans);
-router.post('/', loanController.issueLoan);
-router.post('/:id/return', loanController.returnLoan);
+// Public
+router.get('/', isAuth, loanController.getLoans);
+router.post('/', isAuth, loanController.issueLoan);
+router.post('/:id/return', isAuth, loanController.returnLoan);
 
 export default router;

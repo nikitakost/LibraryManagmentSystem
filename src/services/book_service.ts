@@ -1,29 +1,39 @@
-import { v4 as uuidv4 } from 'uuid';
-import { Book } from '../types/models';
-import { books, saveBooks } from '../storage/memoryDb'; 
+import prisma from '../db/prisma';
 
-export const getAllBooks = (): Book[] => Array.from(books.values());
-export const getBookById = (id: string): Book | undefined => books.get(id);
-
-export const createBook = (data: Omit<Book, 'id' | 'available'>): Book => {
-  const newBook: Book = { id: uuidv4(), ...data, available: true };
-  books.set(newBook.id, newBook);
-  saveBooks(); 
-  return newBook;
+export const getAllBooks = async () => {
+  return await prisma.book.findMany();
 };
 
-export const updateBook = (id: string, data: Partial<Book>): Book | undefined => {
-  const book = books.get(id);
-  if (!book) return undefined;
-
-  const updatedBook = { ...book, ...data };
-  books.set(id, updatedBook);
-  saveBooks(); 
-  return updatedBook;
+export const getBookById = async (id: string) => {
+  return await prisma.book.findUnique({
+    where: { id }
+  });
 };
 
-export const deleteBook = (id: string): boolean => {
-  const isDeleted = books.delete(id);
-  if (isDeleted) saveBooks(); 
-  return isDeleted;
+export const createBook = async (data: { title: string; author: string; year: number; isbn: string; available?: boolean }) => {
+  return await prisma.book.create({
+    data
+  });
+};
+
+export const updateBook = async (id: string, data: any) => {
+  try {
+    return await prisma.book.update({
+      where: { id },
+      data
+    });
+  } catch (error) {
+    return undefined; 
+  }
+};
+
+export const deleteBook = async (id: string): Promise<boolean> => {
+  try {
+    await prisma.book.delete({
+      where: { id }
+    });
+    return true;
+  } catch (error) {
+    return false;
+  }
 };

@@ -1,53 +1,56 @@
-import { v4 as uuidv4 } from 'uuid';
-import { Loan, LoanStatus } from '../types/models';
-import { loans, books, users, saveLoans, saveBooks } from '../storage/memoryDb'; 
+import prisma from '../db/prisma';
 
-export const getAllLoans = (): Loan[] => Array.from(loans.values());
-
-export const issueLoan = (userId: string, bookId: string): Loan => {
-  const user = users.get(userId);
-  if (!user) throw new Error('User not found');
-
-  const book = books.get(bookId);
-  if (!book) throw new Error('Book not found');
-
-  if (!book.available) throw new Error('Book is not available');
-
-  const newLoan: Loan = {
-    id: uuidv4(),
-    userId,
-    bookId,
-    loanDate: new Date(),
-    returnDate: null,
-    status: LoanStatus.ACTIVE
-  };
-
-  book.available = false;
-  books.set(bookId, book);
-  loans.set(newLoan.id, newLoan);
-  
-  saveBooks(); 
-  saveLoans(); 
-  
-  return newLoan;
+export const getAllLoans = async () => {
+  return await prisma.loan.findMany({
+    include: {
+      book: true,
+      user: { select: { id: true, name: true, email: true } }
+    }
+  });
 };
 
-export const returnLoan = (loanId: string): Loan => {
-  const loan = loans.get(loanId);
+export const issueLoan = async (userId: string, bookId: string) => {
+  const book = await prisma.book.findUnique({ where: { id: bookId } });
+  if (!book) throw new Error('Book not found');
+  if (!book.available) throw new Error('Book is not available');
+
+  return await prisma.$transaction(async (tx) => {
+    const loan = await tx.loan.create({
+      data: {
+        userId,
+        bookId,
+        status: 'ACTIVE'
+      }
+    });
+
+    await tx.book.update({
+      where: { id: bookId },
+      data: { available: false }
+    });
+
+    return loan;
+  });
+};
+
+export const returnLoan = async (loanId: string) => {
+  const loan = await prisma.loan.findUnique({ where: { id: loanId } });
   if (!loan) throw new Error('Loan not found');
-  if (loan.status === LoanStatus.RETURNED) throw new Error('Book is already returned');
+  if (loan.status === 'RETURNED') throw new Error('Book is already returned');
 
-  loan.status = LoanStatus.RETURNED;
-  loan.returnDate = new Date();
-  loans.set(loanId, loan);
+  return await prisma.$transaction(async (tx) => {
+    const updatedLoan = await tx.loan.update({
+      where: { id: loanId },
+      data: {
+        status: 'RETURNED',
+        returnDate: new Date()
+      }
+    });
 
-  const book = books.get(loan.bookId);
-  if (book) {
-    book.available = true;
-    books.set(book.id, book);
-    saveBooks(); 
-  }
+    await tx.book.update({
+      where: { id: loan.bookId },
+      data: { available: true }
+    });
 
-  saveLoans(); 
-  return loan;
+    return updatedLoan;
+  });
 };

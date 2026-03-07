@@ -1,13 +1,24 @@
-import { v4 as uuidv4 } from 'uuid';
-import { User } from '../types/models';
-import { users, saveUsers } from '../storage/memoryDb'; 
+import prisma from '../db/prisma';
 
-export const getAllUsers = (): User[] => Array.from(users.values());
-export const getUserById = (id: string): User | undefined => users.get(id);
+export const getAllUsers = async () => {
+  return await prisma.user.findMany({
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true
+    }
+  });
+};
 
-export const createUser = (data: Omit<User, 'id'>): User => {
-  const newUser: User = { id: uuidv4(), ...data };
-  users.set(newUser.id, newUser);
-  saveUsers(); 
-  return newUser;
+export const getUserById = async (id: string) => {
+  return await prisma.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true
+    }
+  });
 };

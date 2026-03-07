@@ -1,13 +1,13 @@
 import { Request, Response } from 'express';
-import * as userService from '../services/user_service';
-import { userSchema } from '../schemas/validation';
+import * as userService from '../services/user_service'; 
 
-export const getUsers = (req: Request, res: Response) => {
-  res.json(userService.getAllUsers());
+export const getUsers = async (req: Request, res: Response) => {
+  const users = await userService.getAllUsers();
+  res.json(users);
 };
 
-export const getUserById = (req: Request<{ id: string }>, res: Response): void => {
-  const user = userService.getUserById(req.params.id);
+export const getUserById = async (req: Request<{ id: string }>, res: Response): Promise<void> => {
+  const user = await userService.getUserById(req.params.id);
   if (!user) {
     res.status(404).json({ error: 'User not found' });
     return;
@@ -15,13 +15,16 @@ export const getUserById = (req: Request<{ id: string }>, res: Response): void =
   res.json(user);
 };
 
-export const createUser = (req: Request, res: Response): void => {
-  const validation = userSchema.safeParse(req.body);
-  if (!validation.success) {
-    res.status(400).json({ errors: validation.error.flatten().fieldErrors });
+
+export const getMe = async (req: Request, res: Response): Promise<void> => {
+  // @ts-ignore
+  const userId = req.user?.userId; 
+  
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 
-  const newUser = userService.createUser(validation.data);
-  res.status(201).json(newUser);
+  const user = await userService.getUserById(userId);
+  res.json(user);
 };
